@@ -19,13 +19,9 @@ class CNNBase(nn.Module):
         if torch.cuda.is_available():
             self.mean = mean.clone().detach().cuda(gpu)
             self.std = std.clone().detach().cuda(gpu)
-            # self.mean = torch.tensor(mean, dtype=torch.float32).cuda(gpu)
-            # self.std = torch.tensor(std, dtype=torch.float32).cuda(gpu)
         else:
             self.mean = mean.clone().detach()
             self.std = std.clone().detach()
-            # self.mean = torch.tensor(mean, dtype=torch.float32)
-            # self.std = torch.tensor(std, dtype=torch.float32)
 
     def _prepare_input(self, inputs):
         pos_x, pos_y, poses, egomotions = inputs[:4]
@@ -58,8 +54,8 @@ class CNNBase(nn.Module):
         else:
             return x, y, x[:, -1, :], None, None, pose_x, pose_y
 
-    def predict(self, inputs):
-        return self(inputs)
+    # def predict(self, inputs):
+    #     return self(inputs)
 
 
 class CNN(CNNBase):
@@ -185,14 +181,19 @@ class CNN_Ego_Pose(CNNBase):
         h_pose = self.pose_encoder(pose_x)
         h_ego = self.ego_encoder(ego_x)
 
-        h = torch.cat((h_pos, h_pose, h_ego), dim=1)  # PyTorch 使用 dim 而不是 axis
+        h = torch.cat((h_pos, h_pose, h_ego), dim=1)
         h = self.inter(h)
         h_pos = self.pos_decoder(h)
 
         pred_y = self.last(h_pos)
-        pred_y = pred_y.transpose(1, 2)  # PyTorch 中转置张量的方法
-        pred_y = pred_y[:, :, :pos_y.size(2)]  # 调整预测的形状以匹配目标
-        # 调整预测值，根据均值和标准差逆归一化
-        pred_y = (pred_y * self.std) + self.mean
-        return pred_y, pos_y
+        pred_y = pred_y.transpose(1, 2)
+        # pred_y = pred_y[:, :, :pos_y.size(2)]
+        # pred_y = (pred_y * self.std) + self.mean
 
+        pred_y = pred_y[:, :pos_y.shape[1], :]
+        offset_x_expanded = offset_x.unsqueeze(1).expand_as(pred_y)
+        self._std = self._std.to(pred_y.device)
+        self._mean = self._mean.to(pred_y.device)
+        pred_y = pred_y + offset_x_expanded
+        pred_y = pred_y * self._std + self._mean
+        return pred_y, pos_y

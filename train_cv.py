@@ -87,22 +87,6 @@ if __name__ == "__main__":
         chainer.config.train = True
         chainer.config.enable_backprop = True
         batch_array = [convert.concat_examples([x[idx] for x in batch], args.gpu) for idx in data_idxs]
-        # batch_array = []
-        # for idx in data_idxs:
-        #     print("idx=" + str(idx))
-        #     print("batch length=" + str(len(batch)))
-        #     print("batch[0] length=" + str(len(batch[0])))
-        #     batch_tensor = []
-        #     for x in batch:
-        #         print("x[idx] length=" + str(len(x[idx])))
-        #         print(type(x[idx]))
-        #         tensor = x[idx]
-        #         batch_tensor.append(tensor)
-        #     print("batch tensor length=" + str(len(batch_tensor)))
-        #     concatenated_tensor = convert.concat_examples(batch_tensor, args.gpu)
-        #     print("concatenated tensor length=" + str(len(concatenated_tensor)))
-        #     batch_array.append(concatenated_tensor)
-
         model.cleargrads()
         loss, pred_y, _ = model(tuple(map(Variable, batch_array)))
         loss.backward()
@@ -156,6 +140,8 @@ if __name__ == "__main__":
             st = time.time()
             train_eval.reset()
         elif (iter_cnt + 1) % args.iter_display == 0:
+            print("----------------------")
+            print("loss = " + str(loss))
             msg = "Iter {}: train loss {} / ADE {} / FDE {}"
             logger.info(msg.format(iter_cnt + 1, train_eval("loss"), train_eval("ade"), train_eval("fde")))
 

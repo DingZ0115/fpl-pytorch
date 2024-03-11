@@ -39,7 +39,6 @@ class Evaluator(object):
     def update(self, loss, pred_y, batch):
         batch_size = len(pred_y)
         true_y = np.array([z[1] for z in batch])  # (B, T, 2)
-
         self.loss += loss * batch_size
         mse = calc_mse(pred_y[..., :2], true_y[..., :2])
         self.ade += np.mean(mse) * batch_size

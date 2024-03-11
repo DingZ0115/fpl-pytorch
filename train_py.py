@@ -28,24 +28,6 @@ from mllogger import MLLogger
 logger = MLLogger(init=False)
 
 
-# def concat_examples_pytorch(batch, device, data_idxs):
-#     batch_array = []
-#     # batch 11*batch_size
-#     for idx in data_idxs:
-#         # 提取索引对应的样本并将它们移动到指定设备
-#         # samples = [x[idx].to(device) for x in batch]
-#         print(idx)
-#         print(len(batch))
-#         print(len(batch[0]))
-#         samples = []
-#         for x in batch:
-#             print(len(x[idx]))
-#             print(type(x[idx]))
-#             sample = x[idx].to(device)
-#             samples.append(sample)
-#         batch_array.append(torch.cat(samples, dim=0))
-#
-#     return batch_array
 def concat_examples_pytorch(batch, device, data_idxs):
     batch_array = []
     # batch 11*batch_size
@@ -148,20 +130,10 @@ if __name__ == "__main__":
     st = time.time()
 
     for iter_cnt, batch in enumerate(train_loader):
-        if iter_cnt == args.nb_iters:
-            print("Break!!!")
-            break
         model.train()
         model.zero_grad()  # 清除旧的梯度
         # 将数据和标签移动到相应设备
-        # inputs = [batch[idx].to(args.device) for idx in data_idxs]
-        # inputs = [torch.cat([x[idx].to(args.device) for x in batch], dim=0) for idx in data_idxs]
         inputs = concat_examples_pytorch(batch, args.device, data_idxs)
-        print("----------------")
-        print(len(inputs))
-        print(len(inputs[0]))
-        if iter_cnt == 2:
-            break
         # 前向传播
         pred_y, pos_y = model(inputs)
         loss = F.mse_loss(pred_y, pos_y)  # 计算损失
@@ -195,12 +167,3 @@ if __name__ == "__main__":
     summary.update("finished", 1)
     summary.write()
     logger.info("Elapsed time: {} (s), Saved at {}".format(time.time() - start, save_dir))
-
-'''batch - (11,batch_size)
-`batch`实际上是一个包含两个或多个元素的元组（或者是列表），而不是直接包含数据项的单一对象。这种情况通常发生在当你的`Dataset`对象返回的每个项是一个元组，比如`(data, label)`，而`DataLoader`将这些项集合成批次时。这时，`len(batch)`实际上给出的是元组中元素的数量，通常对应于数据和标签（如果有其他元素，数字可能更大）。
-在这种情况下，`batch[0]`可能是所有数据项的集合，而`batch[1]`是所有标签的集合。因此，`len(batch[0])`实际上是批量大小，也就是每个批次中数据项的数量，这与你设置的`batch_size`相匹配。
-举个例子，如果你的数据集返回的每个项是一个形如`(image, label)`的元组，那么经过`DataLoader`处理后，每个`batch`将是形如`([images], [labels])`的结构，其中`[images]`和`[labels]`分别是图片和标签的列表（或张量）。在这种情况下：
-- `len(batch)`将返回2（因为`batch`包含两个元素：数据和标签）。
-- `len(batch[0])`将返回批次中的数据项数量，即`batch_size`。
-这解释了为什么你会观察到`len(batch[0]) = batch_size`，而不是`len(batch) = batch_size`的情况。
-'''
