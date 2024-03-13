@@ -1,3 +1,11 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+#
+# Copyright © 2017 Takuma Yagi <tyagi@iis.u-tokyo.ac.jp>
+#
+# Distributed under terms of the MIT license.
+
 import numpy as np
 
 import chainer
@@ -6,6 +14,7 @@ import cupy
 from chainer import Variable, cuda
 
 from logging import getLogger
+
 logger = getLogger("main")
 
 from models.module import Conv_Module, Encoder, Decoder
@@ -62,6 +71,7 @@ class CNN(CNNBase):
     """
     Baseline: location only
     """
+
     def __init__(self, mean, std, gpu, channel_list, dc_channel_list, ksize_list,
                  dc_ksize_list, inter_list, last_list, pad_list):
         super(CNN, self).__init__(mean, std, gpu)
@@ -94,6 +104,7 @@ class CNN_Ego(CNNBase):
     """
     Baseline: feeds locations and egomotions
     """
+
     def __init__(self, mean, std, gpu, channel_list, dc_channel_list, ksize_list,
                  dc_ksize_list, inter_list, last_list, pad_list, ego_type):
         super(CNN_Ego, self).__init__(mean, std, gpu)
@@ -104,7 +115,7 @@ class CNN_Ego(CNNBase):
             self.pos_encoder = Encoder(self.nb_inputs, channel_list, ksize_list, pad_list)
             self.ego_encoder = Encoder(ego_dim, channel_list, ksize_list, pad_list)
             self.pos_decoder = Decoder(dc_channel_list[-1], dc_channel_list, dc_ksize_list[::-1])
-            self.inter = Conv_Module(channel_list[-1]*2, dc_channel_list[0], inter_list)
+            self.inter = Conv_Module(channel_list[-1] * 2, dc_channel_list[0], inter_list)
             self.last = Conv_Module(dc_channel_list[-1], self.nb_inputs, last_list, True)
 
     def __call__(self, inputs):
@@ -130,6 +141,7 @@ class CNN_Pose(CNNBase):
     """
     Baseline: feeds locations and poses
     """
+
     def __init__(self, mean, std, gpu, channel_list, dc_channel_list, ksize_list,
                  dc_ksize_list, inter_list, last_list, pad_list):
         super(CNN_Pose, self).__init__(mean, std, gpu)
@@ -139,7 +151,7 @@ class CNN_Pose(CNNBase):
             self.pos_encoder = Encoder(self.nb_inputs, channel_list, ksize_list, pad_list)
             self.pose_encoder = Encoder(36, channel_list, ksize_list, pad_list)
             self.pos_decoder = Decoder(dc_channel_list[-1], dc_channel_list, dc_ksize_list[::-1])
-            self.inter = Conv_Module(channel_list[-1]*2, dc_channel_list[0], inter_list)
+            self.inter = Conv_Module(channel_list[-1] * 2, dc_channel_list[0], inter_list)
             self.last = Conv_Module(dc_channel_list[-1], self.nb_inputs, last_list, True)
 
     def __call__(self, inputs):
@@ -165,9 +177,9 @@ class CNN_Ego_Pose(CNNBase):
     """
     Our full model: feeds locations, egomotions and poses as input
     """
+
     def __init__(self, mean, std, gpu, channel_list, dc_channel_list, ksize_list,
                  dc_ksize_list, inter_list, last_list, pad_list, ego_type):
-
         super(CNN_Ego_Pose, self).__init__(mean, std, gpu)
         ego_dim = 6 if ego_type == "sfm" else 96 if ego_type == "grid" else 24
         if len(ksize_list) > 0 and len(dc_ksize_list) == 0:
@@ -177,7 +189,7 @@ class CNN_Ego_Pose(CNNBase):
             self.ego_encoder = Encoder(ego_dim, channel_list, ksize_list, pad_list)
             self.pose_encoder = Encoder(36, channel_list, ksize_list, pad_list)
             self.pos_decoder = Decoder(dc_channel_list[-1], dc_channel_list, dc_ksize_list[::-1])
-            self.inter = Conv_Module(channel_list[-1]*3, dc_channel_list[0], inter_list)
+            self.inter = Conv_Module(channel_list[-1] * 3, dc_channel_list[0], inter_list)
             self.last = Conv_Module(dc_channel_list[-1], self.nb_inputs, last_list, True)
 
     def __call__(self, inputs):
@@ -190,9 +202,11 @@ class CNN_Ego_Pose(CNNBase):
         h = F.concat((h_pos, h_pose, h_ego), axis=1)  # (B, C, 2)
         h = self.inter(h)
         h_pos = self.pos_decoder(h)
+
         pred_y = self.last(h_pos)  # (B, 10, C+6+28)
         pred_y = F.swapaxes(pred_y, 1, 2)
         pred_y = pred_y[:, :pos_y.shape[1], :]
+
         loss = F.mean_squared_error(pred_y, pos_y)
 
         pred_y = pred_y + F.broadcast_to(F.expand_dims(offset_x, 1), pred_y.shape)

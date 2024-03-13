@@ -120,8 +120,9 @@ class SceneDatasetCV(dataset_mixin.DatasetMixin):
         Y = self.Y[i].copy()
         poses = self.poses[i].copy()
         egomotions = self.egomotions[i].copy()
+        horizontal_flip = True if self.flip else False
 
-        horizontal_flip = np.random.random() < 0.5 if self.flip else False
+        # horizontal_flip = np.random.random() < 0.5 if self.flip else False
         if horizontal_flip:
             X[:, 0] = self.width - X[:, 0]
             Y[:, 0] = self.width - Y[:, 0]
@@ -142,7 +143,6 @@ class SceneDatasetForAnalysis(dataset_mixin.DatasetMixin):
     """
 
     def __init__(self, data, input_len, offset_len, pred_len, width, height):
-
         self.X, self.Y, self.video_ids, self.frames, self.person_ids, \
         raw_poses, self.turn_mags, self.trans_mags, self.masks, self.offset = \
             parse_data_CV(data, list(range(5, 10, 1)), input_len, offset_len, pred_len, -1)

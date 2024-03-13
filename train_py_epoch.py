@@ -36,7 +36,7 @@ def concat_examples_pytorch(batch, device, data_idxs):
     return batch_array
 
 
-def validate_and_report(model, valid_loader, device, args, save_dir, iter_cnt):
+def validate_and_report(model, valid_loader, args, save_dir, epoch):
     prediction_dict = {
         "arguments": vars(args),
         "predictions": {}
@@ -46,23 +46,20 @@ def validate_and_report(model, valid_loader, device, args, save_dir, iter_cnt):
         model.zero_grad()  # 清除旧的梯度
         # 实现验证逻辑
         for batch in valid_loader:
-            inputs = [batch[idx].to(device) for idx in data_idxs]
-            # inputs = [tensor.to(args.device) for tensor in batch]
-            pred_y, pos_y = model(inputs)
-            loss = F.mse_loss(pred_y, pos_y)  # 计算损失
-            # 更新验证评估
+            inputs = concat_examples_pytorch(batch, args.device, data_idxs)
+            loss, pred_y = model(inputs)
             valid_eval.update(loss.item(), pred_y, batch)
 
             write_prediction(prediction_dict["predictions"], batch, pred_y)
 
-        message_str = "Iter {}: train loss {} / ADE {} / FDE {}, valid loss {} / " \
+        message_str = "Epoch {}: train loss {} / ADE {} / FDE {}, valid loss {} / " \
                       "ADE {} / FDE {}, elapsed time: {} (s)"
         logger.info(
-            message_str.format(iter_cnt + 1, train_eval("loss"), train_eval("ade"), train_eval("fde"),
-                               valid_eval("loss"), valid_eval("ade"), valid_eval("fde"), time.time() - st)
-        )
-        train_eval.update_summary(summary, iter_cnt, ["loss", "ade", "fde"])
-        valid_eval.update_summary(summary, iter_cnt, ["loss", "ade", "fde"])
+            message_str.format(epoch, train_eval("loss"), train_eval("ade"), train_eval("fde"),
+                               valid_eval("loss"), valid_eval("ade"), valid_eval("fde"), time.time() - st))
+
+        train_eval.update_summary(summary, epoch, ["loss", "ade", "fde"])
+        valid_eval.update_summary(summary, epoch, ["loss", "ade", "fde"])
 
         predictions = prediction_dict["predictions"]
         pred_list = [[pred for vk, v_dict in sorted(predictions.items())
@@ -129,37 +126,37 @@ if __name__ == "__main__":
     train_eval.reset()
     st = time.time()
 
-    for iter_cnt, batch in enumerate(train_loader):
+    epochs = 30
+    for epoch in range(epochs):
         model.train()
-        model.zero_grad()  # 清除旧的梯度
-        # 将数据和标签移动到相应设备
-        inputs = concat_examples_pytorch(batch, args.device, data_idxs)
-        # 前向传播
-        loss, pred_y = model(inputs)
-        # 反向传播和优化
-        loss.backward()  # 计算梯度
+        loss = 0.0
+        for batch in train_loader:
+            model.zero_grad()  # 清除旧的梯度
+            # 将数据和标签移动到相应设备
+            inputs = concat_examples_pytorch(batch, args.device, data_idxs)
+            # 前向传播
+            loss, pred_y = model(inputs)
+            # 反向传播和优化
+            loss.backward()  # 计算梯度
 
-        optimizer.step()  # 更新参数
-        scheduler.step()  # 更新学习率
+            optimizer.step()  # 更新参数
+            scheduler.step()  # 更新学习率
+            # 更新训练评估
+            train_eval.update(loss.item(), pred_y, batch)
 
-        # 更新训练评估
-        train_eval.update(loss.item(), pred_y, batch)
+        logger.info("Validation...")
+        valid_eval.reset()
+        validate_and_report(model, valid_loader, args, save_dir, epoch + 1)
+        logger.info("Validation completed.")
+        # 重置时间统计器
+        st = time.time()
+        train_eval.reset()
+        epoch_loss = loss / len(train_dataset)
+        msg = "Epoch {} / {} : epoch loss {} / train loss {} / ADE {} / FDE {}"
+        logger.info(msg.format(epoch + 1, epochs, epoch_loss, train_eval("loss"), train_eval("ade"), train_eval("fde")))
 
-        # 验证和报告
-        if (iter_cnt + 1) % args.iter_snapshot == 0:
-            logger.info("Validation...")
-            if args.save_model:
-                torch.save(model.state_dict(), os.path.join(save_dir, "model_{}.pth".format(iter_cnt + 1)))
-            valid_eval.reset()
-            validate_and_report(model, valid_loader, args.device, args, save_dir, iter_cnt)
-            logger.info("Validation completed.")
-            # 重置时间统计器
-            st = time.time()
-            train_eval.reset()
-
-        elif (iter_cnt + 1) % args.iter_display == 0:
-            msg = "Iter {}: train loss {} / ADE {} / FDE {}"
-            logger.info(msg.format(iter_cnt + 1, train_eval("loss"), train_eval("ade"), train_eval("fde")))
+    if args.save_model:
+        torch.save(model.state_dict(), os.path.join(save_dir, "fpl-pytorch.pth"))
     summary.update("finished", 1)
     summary.write()
     logger.info("Elapsed time: {} (s), Saved at {}".format(time.time() - start, save_dir))

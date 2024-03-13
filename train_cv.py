@@ -17,7 +17,6 @@ import numpy as np
 import chainer
 from chainer import Variable, optimizers, serializers, iterators, cuda
 from chainer.dataset import convert
-
 from utils.generic import get_args, get_model, write_prediction
 from utils.dataset import SceneDatasetCV
 from utils.summary_logger import SummaryLogger
@@ -71,6 +70,8 @@ if __name__ == "__main__":
     optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
     scheduler = AdamScheduler(optimizer, 0.5, args.lr_step_list, 0)
 
+    # train_iterator = iterators.MultithreadIterator(train_dataset, args.batch_size, repeat=True, shuffle=False,
+    #     #                                                n_threads=args.nb_jobs)
     train_iterator = iterators.MultithreadIterator(train_dataset, args.batch_size, n_threads=args.nb_jobs)
     train_eval = Evaluator("train", args)
     valid_iterator = iterators.MultithreadIterator(valid_dataset, args.batch_size, False, False, n_threads=args.nb_jobs)

@@ -113,6 +113,7 @@ class SceneDatasetCV(Dataset):
         Y = self.Y[i].copy()
         poses = self.poses[i].copy()
         egomotions = self.egomotions[i].copy()
+        # horizontal_flip = True if self.flip else False
 
         horizontal_flip = np.random.random() < 0.5 if self.flip else False
         if horizontal_flip:

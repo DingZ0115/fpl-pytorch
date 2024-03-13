@@ -3,8 +3,7 @@ import torch
 
 def calc_mse(pred_y, true_y):
     # 使用PyTorch计算MSE，确保操作在Tensor上进行
-    mse = torch.mean((pred_y - true_y) ** 2)
-    return mse
+    return torch.norm(pred_y - true_y, dim=pred_y.dim() - 1)
 
 
 class Evaluator(object):
@@ -24,12 +23,13 @@ class Evaluator(object):
     def update(self, loss, pred_y, batch):
         batch_size = len(pred_y)
         true_y = batch[1].to(pred_y.device)
+
         self.loss += loss * batch_size
         mse = calc_mse(pred_y[..., :2], true_y[..., :2])
-        self.ade += mse.item() * batch_size  # 转换为Python数值进行累加
+        self.ade += torch.mean(mse) * batch_size  # 转换为Python数值进行累加
 
         mse = calc_mse(pred_y[:, -1, :2], true_y[:, -1, :2])
-        self.fde += mse.item() * batch_size
+        self.fde += torch.mean(mse) * batch_size
         self.cnt += batch_size
 
     def __call__(self, name, normalize=True):

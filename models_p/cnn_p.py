@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from logging import getLogger
 
 logger = getLogger("main")
@@ -53,9 +54,6 @@ class CNNBase(nn.Module):
             return x, y, x[:, -1, :], ego_x, ego_y, pose_x, pose_y
         else:
             return x, y, x[:, -1, :], None, None, pose_x, pose_y
-
-    # def predict(self, inputs):
-    #     return self(inputs)
 
 
 class CNN(CNNBase):
@@ -170,7 +168,7 @@ class CNN_Ego_Pose(CNNBase):
         self.pos_encoder = Encoder(self.nb_inputs, channel_list, ksize_list, pad_list).to(device)
         self.ego_encoder = Encoder(ego_dim, channel_list, ksize_list, pad_list).to(device)
         self.pose_encoder = Encoder(36, channel_list, ksize_list, pad_list).to(device)
-        self.pos_decoder = Decoder(dc_channel_list[-1], dc_channel_list, list(reversed(dc_ksize_list))).to(device)
+        self.pos_decoder = Decoder(dc_channel_list[-1], dc_channel_list, dc_ksize_list[::-1]).to(device)
         self.inter = Conv_Module(channel_list[-1] * 3, dc_channel_list[0], inter_list).to(device)
         self.last = Conv_Module(dc_channel_list[-1], self.nb_inputs, last_list, True).to(device)
 
@@ -187,13 +185,13 @@ class CNN_Ego_Pose(CNNBase):
 
         pred_y = self.last(h_pos)
         pred_y = pred_y.transpose(1, 2)
-        # pred_y = pred_y[:, :, :pos_y.size(2)]
-        # pred_y = (pred_y * self.std) + self.mean
-
         pred_y = pred_y[:, :pos_y.shape[1], :]
+
+        loss = F.mse_loss(pred_y, pos_y)  # 计算损失
+
         offset_x_expanded = offset_x.unsqueeze(1).expand_as(pred_y)
         self._std = self._std.to(pred_y.device)
         self._mean = self._mean.to(pred_y.device)
         pred_y = pred_y + offset_x_expanded
         pred_y = pred_y * self._std + self._mean
-        return pred_y, pos_y
+        return loss, pred_y

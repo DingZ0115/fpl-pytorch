@@ -13,6 +13,10 @@ class Conv_BN(chainer.Chain):
         self.no_bn = no_bn
         with self.init_scope():
             self.conv = L.ConvolutionND(1, nb_in, nb_out, ksize=ksize, pad=pad)
+
+            self.conv.W.data[:] = 1
+            self.conv.b.data[:] = 0
+
             if not no_bn:
                 self.bn = L.BatchNormalization(nb_out)
 
@@ -33,7 +37,7 @@ class Conv_Module(chainer.Chain):
             else:
                 setattr(self, "layer1", Conv_BN(nb_in, inter_list[0]))
                 for lidx, (nin, nout) in enumerate(zip(inter_list[:-1], inter_list[1:])):
-                    setattr(self, "layer{}".format(lidx+2), Conv_BN(nin, nout))
+                    setattr(self, "layer{}".format(lidx + 2), Conv_BN(nin, nout))
                 setattr(self, "layer{}".format(self.nb_layers), Conv_BN(inter_list[-1], nb_out, no_bn=no_act_last))
 
     def __call__(self, h):
@@ -49,7 +53,8 @@ class Encoder(chainer.Chain):
         channel_list = [nb_inputs] + channel_list
         if len(pad_list) == 0:
             pad_list = [0 for _ in range(len(ksize_list))]
-        for idx, (nb_in, nb_out, ksize, pad) in enumerate(zip(channel_list[:-1], channel_list[1:], ksize_list, pad_list)):
+        for idx, (nb_in, nb_out, ksize, pad) in enumerate(
+                zip(channel_list[:-1], channel_list[1:], ksize_list, pad_list)):
             self.add_link("conv{}".format(idx), Conv_BN(nb_in, nb_out, ksize, pad))
 
     def __call__(self, x):
@@ -66,7 +71,11 @@ class Decoder(chainer.Chain):
         self.no_act_last = no_act_last
         channel_list = channel_list + [nb_inputs]
         for idx, (nb_in, nb_out, ksize) in enumerate(zip(channel_list[:-1], channel_list[1:], ksize_list[::-1])):
-            self.add_link("deconv{}".format(idx), L.DeconvolutionND(1, nb_in, nb_out, ksize))
+
+            deconv_layer = L.DeconvolutionND(1, nb_in, nb_out, ksize)
+            deconv_layer.W.data[:] = 1
+            deconv_layer.b.data[:] = 0
+            self.add_link("deconv{}".format(idx), deconv_layer)
             if no_act_last and idx == self.nb_layers - 1:
                 continue
             self.add_link("bn{}".format(idx), L.BatchNormalization(nb_out))
