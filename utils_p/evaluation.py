@@ -26,7 +26,7 @@ class Evaluator(object):
 
         self.loss += loss * batch_size
         mse = calc_mse(pred_y[..., :2], true_y[..., :2])
-        self.ade += torch.mean(mse) * batch_size  # 转换为Python数值进行累加
+        self.ade += torch.mean(mse) * batch_size
 
         mse = calc_mse(pred_y[:, -1, :2], true_y[:, -1, :2])
         self.fde += torch.mean(mse) * batch_size
@@ -38,7 +38,10 @@ class Evaluator(object):
         else:
             return getattr(self, name)
 
-    def update_summary(self, summary, iter_cnt, targets):
+    def update_summary(self, summary, targets):
         for name in targets:
-            summary.update_by_cond(self.prefix + "_" + name, getattr(self, name) / self.cnt, iter_cnt + 1)
+            value = getattr(self, name)
+            if isinstance(value, torch.Tensor):
+                value = value.item()
+            summary.update_by_cond(self.prefix + "_" + name, value / self.cnt)
         summary.write()

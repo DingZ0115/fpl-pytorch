@@ -1,6 +1,5 @@
 import argparse
 import torch
-import numpy as np
 from models.cnn import CNN, CNN_Pose, CNN_Ego, CNN_Ego_Pose
 from logging import getLogger
 
@@ -89,13 +88,18 @@ def get_model(args):
 
 
 def write_prediction(pred_dict, batch, pred_y):
-    for idx, (sample, py) in enumerate(zip(batch, pred_y)):
+    # batch_transposed = batch.permute(1, 0)  # 将 11*64 转置为 64*11,pytorch 中的batch和chainer不同
+    # batch中包含tensor,pre_y是tensor
+    for idx in range(len(batch[0])):
+        sample = [batch[i][idx] for i in range(len(batch))]
+        py = pred_y[idx]
+        # past, ground_truth,pose,egomotion 为 tensor
         past, ground_truth, pose, vid, frame, pid, flipped, egomotion, scale, mag, size = sample
         frame, pid = str(frame), str(pid)
 
-        err = np.linalg.norm(py - ground_truth, axis=1)[-1]
+        err = torch.norm(py - ground_truth.to(pred_y.device), dim=1)[-1]
         front_cnt = sum([1 if ps[11][0] - ps[8][0] > 0 else 0 for ps in pose])
-        hip_dist = np.mean([np.abs(ps[11, 0] - ps[8, 0]) for ps in pose])
+        hip_dist = torch.mean(torch.abs(pose[:, 11, 0] - pose[:, 8, 0]))
         front_ratio = front_cnt / len(pose)
 
         # 0: front 1: back 2: cross 3:other
@@ -113,6 +117,7 @@ def write_prediction(pred_dict, batch, pred_y):
         if frame not in pred_dict[vid]:
             pred_dict[vid][frame] = {}
 
-        result = [vid, frame, pid, flipped, py, None, None, err, traj_type]
-        result = list(map(lambda x: x.tolist() if type(x).__module__ == "numpy" else x, result))
+        result = [vid, frame, pid, flipped, py.tolist(), None, None, err, traj_type]
+        # flipped,py,err都是tensor。py是tensor列表
+        result = list(map(lambda x: x.item() if isinstance(x, torch.Tensor) else x, result))
         pred_dict[vid][frame][pid] = result

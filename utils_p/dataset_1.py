@@ -131,7 +131,6 @@ class SceneDatasetCV(Dataset):
                self.scales_all[i]
 
 
-# 待确认哪些get_item的返回值要转为tensor
 class SceneDatasetForAnalysis(Dataset):
     """
     Dataset class only for plot

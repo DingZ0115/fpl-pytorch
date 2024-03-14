@@ -17,7 +17,6 @@ import torch
 from torch import optim
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import MultiStepLR  # 假设你有类似的学习率调度需求
-import torch.nn.functional as F
 import numpy as np
 from utils.dataset import SceneDatasetCV  # 假设你已经有一个对应的PyTorch Dataset实现
 from utils.evaluation import Evaluator  # 需要根据PyTorch进行适当修改
@@ -36,14 +35,13 @@ def concat_examples_pytorch(batch, device, data_idxs):
     return batch_array
 
 
-def validate_and_report(model, valid_loader, args, save_dir, epoch):
+def validate_and_report(model, valid_loader, args):
     prediction_dict = {
         "arguments": vars(args),
         "predictions": {}
     }
     model.eval()  # 设置模型为评估模式
     with torch.no_grad():  # 在评估时不计算梯度
-        model.zero_grad()  # 清除旧的梯度
         # 实现验证逻辑
         for batch in valid_loader:
             inputs = concat_examples_pytorch(batch, args.device, data_idxs)
@@ -52,14 +50,12 @@ def validate_and_report(model, valid_loader, args, save_dir, epoch):
 
             write_prediction(prediction_dict["predictions"], batch, pred_y)
 
-        message_str = "Epoch {}: train loss {} / ADE {} / FDE {}, valid loss {} / " \
-                      "ADE {} / FDE {}, elapsed time: {} (s)"
-        logger.info(
-            message_str.format(epoch, train_eval("loss"), train_eval("ade"), train_eval("fde"),
-                               valid_eval("loss"), valid_eval("ade"), valid_eval("fde"), time.time() - st))
+        message_str = "Train loss {} / ADE {} / FDE {}, valid loss {} / ADE {} / FDE {}, elapsed time: {} (s)"
+        logger.info(message_str.format(train_eval("loss"), train_eval("ade"), train_eval("fde"),
+                                       valid_eval("loss"), valid_eval("ade"), valid_eval("fde"), time.time() - st))
 
-        train_eval.update_summary(summary, epoch, ["loss", "ade", "fde"])
-        valid_eval.update_summary(summary, epoch, ["loss", "ade", "fde"])
+        train_eval.update_summary(summary, ["loss", "ade", "fde"])
+        valid_eval.update_summary(summary, ["loss", "ade", "fde"])
 
         predictions = prediction_dict["predictions"]
         pred_list = [[pred for vk, v_dict in sorted(predictions.items())
@@ -126,35 +122,28 @@ if __name__ == "__main__":
     train_eval.reset()
     st = time.time()
 
-    epochs = 30
+    epochs = 100
     for epoch in range(epochs):
         model.train()
-        loss = 0.0
+        total_loss = 0.0
         for batch in train_loader:
-            model.zero_grad()  # 清除旧的梯度
+            optimizer.zero_grad()  # 清除旧的梯度
             # 将数据和标签移动到相应设备
             inputs = concat_examples_pytorch(batch, args.device, data_idxs)
             # 前向传播
             loss, pred_y = model(inputs)
+            total_loss += loss.item()
             # 反向传播和优化
             loss.backward()  # 计算梯度
-
             optimizer.step()  # 更新参数
-            scheduler.step()  # 更新学习率
             # 更新训练评估
             train_eval.update(loss.item(), pred_y, batch)
-
-        logger.info("Validation...")
-        valid_eval.reset()
-        validate_and_report(model, valid_loader, args, save_dir, epoch + 1)
-        logger.info("Validation completed.")
-        # 重置时间统计器
-        st = time.time()
-        train_eval.reset()
-        epoch_loss = loss / len(train_dataset)
+        scheduler.step()  # 更新学习率
+        epoch_loss = total_loss / len(train_dataset)
         msg = "Epoch {} / {} : epoch loss {} / train loss {} / ADE {} / FDE {}"
         logger.info(msg.format(epoch + 1, epochs, epoch_loss, train_eval("loss"), train_eval("ade"), train_eval("fde")))
-
+    logger.info("Validation...")
+    validate_and_report(model, valid_loader, args)
     if args.save_model:
         torch.save(model.state_dict(), os.path.join(save_dir, "fpl-pytorch.pth"))
     summary.update("finished", 1)

@@ -13,10 +13,6 @@ class Conv_BN(chainer.Chain):
         self.no_bn = no_bn
         with self.init_scope():
             self.conv = L.ConvolutionND(1, nb_in, nb_out, ksize=ksize, pad=pad)
-
-            self.conv.W.data[:] = 1
-            self.conv.b.data[:] = 0
-
             if not no_bn:
                 self.bn = L.BatchNormalization(nb_out)
 
@@ -71,11 +67,7 @@ class Decoder(chainer.Chain):
         self.no_act_last = no_act_last
         channel_list = channel_list + [nb_inputs]
         for idx, (nb_in, nb_out, ksize) in enumerate(zip(channel_list[:-1], channel_list[1:], ksize_list[::-1])):
-
-            deconv_layer = L.DeconvolutionND(1, nb_in, nb_out, ksize)
-            deconv_layer.W.data[:] = 1
-            deconv_layer.b.data[:] = 0
-            self.add_link("deconv{}".format(idx), deconv_layer)
+            self.add_link("deconv{}".format(idx), L.DeconvolutionND(1, nb_in, nb_out, ksize))
             if no_act_last and idx == self.nb_layers - 1:
                 continue
             self.add_link("bn{}".format(idx), L.BatchNormalization(nb_out))

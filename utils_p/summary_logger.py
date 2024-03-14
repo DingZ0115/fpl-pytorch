@@ -28,12 +28,11 @@ class SummaryLogger(object):
         for key, value in update_dict.items():
             self._summ[key] = value
 
-    def update_by_cond(self, key, value, timing, cond="lower"):
+    def update_by_cond(self, key, value, cond="lower"):
         assert cond == "lower" or cond == "higher"
         sign = 1 if cond == "lower" else -1
         if key not in self._summ or sign * value < sign * self._summ[key]:
             self._summ[key] = value
-            self._summ[key+"_tm"] = timing
 
     def write(self):
         """Write summary to csv file

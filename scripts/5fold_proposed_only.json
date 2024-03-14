@@ -7,7 +7,7 @@
         "nb_jobs": 1
     },
     "fixed_args": {
-        "in_data": "dataset/id_list_20_180521_173817_20_sp5_2_5.joblib",
+        "in_data": "dataset/id_list_20_240303_125625_20_sp5_2_5.joblib",
         "nb_iters": 17000,
         "iter_snapshot": 1000,
         "optimizer": "adam",
@@ -21,7 +21,7 @@
         "ksize_list": [3, 3, 3, 3],
         "inter_list": [256],
         "input_len": 10,
-        "lr_step_list": [5000, 10000, 15000]
+        "lr_step_list": [8,16,24,32]
     },
     "dynamic_args": {
         "model": ["cnn_ego_pose_scale"]
