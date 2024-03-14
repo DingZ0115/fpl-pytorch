@@ -1,5 +1,5 @@
 # fpl-pytorch
-
+## 注意点及解释
 Q. DataSet返回的horizontal_flip，在dataloader产生batch以后，从布尔型变成了tensor
 在PyTorch中，`DataLoader`的`collate_fn`参数控制如何将多个数据样本（来自`Dataset`的`__getitem__`
 方法的返回值）批处理（或“collate”）成一个批次。默认情况下，`DataLoader`使用一个默认的`collate_fn`
@@ -31,5 +31,6 @@ batch - (batch_size, 11) 每个样本包括11个特征
 1. dataset - SceneDatasetForAnalysis
 2. cnn- CNN_Ego，CNN_Pose
 
-
+## 代码注意事项
+dataset_1，train_py_epoch为正确代码
 
