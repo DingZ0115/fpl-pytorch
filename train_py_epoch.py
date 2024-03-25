@@ -1,3 +1,5 @@
+# pytorch版本训练代码
+
 # The main training file, afer calling run.py to generate commands.
 # This file will be called to start the main training parts.
 # Look at the command file in gen_scripts for input parameters.
@@ -16,10 +18,10 @@ import joblib
 import torch
 from torch import optim
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import MultiStepLR  # 假设你有类似的学习率调度需求
+from torch.optim.lr_scheduler import MultiStepLR
 import numpy as np
-from utils.dataset import SceneDatasetCV  # 假设你已经有一个对应的PyTorch Dataset实现
-from utils.evaluation import Evaluator  # 需要根据PyTorch进行适当修改
+from utils.dataset import SceneDatasetCV
+from utils.evaluation import Evaluator
 from utils.summary_logger import SummaryLogger
 from utils.generic import get_args, get_model, write_prediction
 from mllogger import MLLogger
@@ -122,7 +124,7 @@ if __name__ == "__main__":
     train_eval.reset()
     st = time.time()
 
-    epochs = 100
+    epochs = 28
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
@@ -142,6 +144,9 @@ if __name__ == "__main__":
         epoch_loss = total_loss / len(train_dataset)
         msg = "Epoch {} / {} : epoch loss {} / train loss {} / ADE {} / FDE {}"
         logger.info(msg.format(epoch + 1, epochs, epoch_loss, train_eval("loss"), train_eval("ade"), train_eval("fde")))
+        # if epoch % 2 == 1:
+        #     validate_and_report(model, valid_loader, args)
+        #     print("-------------------")
     logger.info("Validation...")
     validate_and_report(model, valid_loader, args)
     if args.save_model:

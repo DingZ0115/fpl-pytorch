@@ -27,9 +27,7 @@ Chainer 中
 batch - (batch_size, 11) 每个样本包括11个特征
 
 ## 待办
-
-1. dataset - SceneDatasetForAnalysis
-2. cnn- CNN_Ego，CNN_Pose
+1. 待测试eval_cv.py
 
 ## 代码注意事项
 dataset_1，train_py_epoch为正确代码

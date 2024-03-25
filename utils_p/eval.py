@@ -61,7 +61,7 @@ if __name__ == "__main__":
         else:
             out_commands.append(add_str(out_command, "--in_data {}".format(dataset_path)))
 
-    out_commands = [add_str(cmd, "--gpu {} --debug --pred_len {}".format(gpu_id, pred_len)) for cmd in out_commands]
+    out_commands = [add_str(cmd, "--device {} --debug --pred_len {}".format(gpu_id, pred_len)) for cmd in out_commands]
 
     if dataset is not None:
         out_commands = [add_str(cmd, "--in_data {}".format(dataset)) for cmd in out_commands]

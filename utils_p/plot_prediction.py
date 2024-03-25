@@ -5,16 +5,37 @@ import json
 import argparse
 import joblib
 from box import Box
-
 import numpy as np
 import cv2
-
-from utils.dataset import SceneDatasetForAnalysis
-from utils.plot import draw_line, draw_dotted_line, draw_x
-
+import re
+from dataset import SceneDatasetForAnalysis
+from plot import draw_line, draw_dotted_line, draw_x
 from mllogger import MLLogger
+import torch
 
 logger = MLLogger(init=False)
+
+
+def extract_number(text):
+    """
+    从给定的字符串中提取第一个数字。
+
+    参数:
+    - text: 字符串，希望从中提取数字的文本。
+
+    返回:
+    - 第一个找到的数字（整数），如果没有找到数字则返回None。
+    """
+    matches = re.findall(r'\d+', text)
+    if matches:
+        return int(matches[0])
+    else:
+        return None
+def to_tensor_string(n):
+    """
+    将整数转换为字符串，格式为"tensor(n)"。
+    """
+    return f"tensor({n})"
 
 
 def get_traj_type(hip_dist):
@@ -101,11 +122,14 @@ if __name__ == "__main__":
     cnt = 0
     total_error = 0
     for idx in range(len(valid_dataset)):
-        past, gt, pose, vid, frame, pid, flipped = valid_dataset.get_example(idx)[:7]
+        past, gt, pose, vid, frame, pid, flipped = valid_dataset[idx][:7]
         if len(args.video_ids) > 0 and vid not in args.video_ids:
             continue
-        if vid not in predictions or str(frame) not in predictions[vid] \
-                or str(pid) not in predictions[vid][str(frame)]:
+
+        pid_tensor = to_tensor_string(pid)
+        frame_tensor = to_tensor_string(frame)
+        if vid not in predictions or frame_tensor not in predictions[vid] \
+                or pid_tensor not in predictions[vid][frame_tensor]:
             continue
         past = past[..., :2]
         gt = gt[..., :2]
@@ -119,7 +143,7 @@ if __name__ == "__main__":
             continue
 
         print("Video: {}, pid: {}, frame: {}".format(vid, pid, frame))
-        img_dir = os.path.join(data_dir, "pseudo_viz", vid, "images")
+        img_dir = os.path.join(data_dir, "videos", vid, "images")
         img = cv2.imread(os.path.join(
             img_dir, "rgb_{:05d}.jpg".format(frame + sargs.input_len - 1)))
         img2 = cv2.imread(os.path.join(
@@ -136,7 +160,7 @@ if __name__ == "__main__":
             im = draw_dotted_line(im, gt, color_gt, 1.0, thick)
             im = draw_x(im, gt[-1], color_gt, 1.0, thick_x)
 
-            vid, frame, pid, flipped, py, pe, pp, err, traj_type = predictions[vid][str(frame)][str(pid)]
+            vid, frame, pid, flipped, py, pe, pp, err, traj_type = predictions[vid][frame_tensor][pid_tensor]
             predicted = np.array(py)[..., :2]
             total_error += err
 
@@ -151,7 +175,7 @@ if __name__ == "__main__":
             if not args.debug:
                 if args.img_ratio < 1.0:
                     im = cv2.resize(im, None, fx=args.img_ratio, fy=args.img_ratio)
-                cv2.imwrite(os.path.join(save_dir, "pred_{}_{}_{}_{}.jpg".format(vid, frame, pid, idx + 1)), im)
+                cv2.imwrite(os.path.join(save_dir, "pred_{}_{}_{}_{}.jpg".format(vid, extract_number(frame), extract_number(pid), idx + 1)), im)
 
         cnt += 1
 

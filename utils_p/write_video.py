@@ -5,15 +5,39 @@ import json
 import argparse
 import joblib
 from box import Box
-
 import numpy as np
 import cv2
-
-from utils.dataset import SceneDatasetForAnalysis
-from utils.plot import draw_line, draw_dotted_line, draw_x
+import re
+from dataset import SceneDatasetForAnalysis
+from plot import draw_line, draw_dotted_line, draw_x
 
 from mllogger import MLLogger
+
 logger = MLLogger(init=False)
+
+
+def extract_number(text):
+    """
+    从给定的字符串中提取第一个数字。
+
+    参数:
+    - text: 字符串，希望从中提取数字的文本。
+
+    返回:
+    - 第一个找到的数字（整数），如果没有找到数字则返回None。
+    """
+    matches = re.findall(r'\d+', text)
+    if matches:
+        return int(matches[0])
+    else:
+        return None
+
+
+def to_tensor_string(n):
+    """
+    将整数转换为字符串，格式为"tensor(n)"。
+    """
+    return f"tensor({n})"
 
 
 if __name__ == "__main__":
@@ -82,11 +106,12 @@ if __name__ == "__main__":
     if args.vid not in predictions:
         print("No prediction found: aborted {} {} {}".format(args.vid, args.frame, args.pid))
         exit(1)
-
-    if str(args.frame) not in predictions[args.vid] or str(args.pid) not in predictions[args.vid][str(args.frame)]:
+    pid_tensor = to_tensor_string(args.pid)
+    frame_tensor = to_tensor_string(args.frame)
+    if frame_tensor not in predictions[args.vid] or pid_tensor not in predictions[args.vid][frame_tensor]:
         print("Specify all vid, frame and pid: aborted {} {} {}".format(args.vid, args.frame, args.pid))
-        if args.vid in predictions and str(args.frame) in predictions[args.vid]:
-            print("Valid pids: {}".format(sorted(predictions[args.vid][str(args.frame)].keys())))
+        if args.vid in predictions and frame_tensor in predictions[args.vid]:
+            print("Valid pids: {}".format(sorted(predictions[args.vid][frame_tensor].keys())))
         elif args.vid in predictions:
             print("Valid frames {}".format(sorted(predictions[args.vid].keys())))
         exit(1)
@@ -108,7 +133,7 @@ if __name__ == "__main__":
     if args.frame != -1:
         pid_list = []
         for idx in range(len(valid_dataset)):
-            _, _, _, vid, frame, pid = valid_dataset.get_example(idx)[:6]
+            _, _, _, vid, frame, pid = valid_dataset[idx][:6]
             if vid == args.vid and frame == args.frame:
                 pid_list.append(pid)
 
@@ -121,7 +146,7 @@ if __name__ == "__main__":
 
     idx_list = []
     for idx in range(len(valid_dataset)):
-        _, _, _, vid, frame, pid = valid_dataset.get_example(idx)[:6]
+        _, _, _, vid, frame, pid = valid_dataset[idx][:6]
         if vid == args.vid and pid == args.pid:
             idx_list.append((idx, frame))
 
@@ -137,8 +162,9 @@ if __name__ == "__main__":
 
     selected_idx = idx_list[list(map(lambda x: x[1], idx_list)).index(args.frame)][0]
 
-    past, ground_truth, pose, vid, frame, pid, flipped = valid_dataset.get_example(selected_idx)[:7]
-    img_dir = os.path.join(data_dir, "pseudo_viz", vid, "images")
+    past, ground_truth, pose, vid, frame, pid, flipped = valid_dataset[selected_idx][:7]
+    img_dir = os.path.join(data_dir, "videos", vid, "images")
+
 
     def draw_past(img_dir, b, offset):
         past, ground_truth, pose, vid, frame, pid, flipped = b[:7]
@@ -148,15 +174,19 @@ if __name__ == "__main__":
         # Past
         if offset > 0:
             cv2.circle(im, (int(past[0][0]), int(past[0][1])), args.size_circle, color_ps, -1)
-            im = draw_line(im, past[:offset+1], color_ps, 1.0, args.thick)
+            im = draw_line(im, past[:offset + 1], color_ps, 1.0, args.thick)
             im = draw_x(im, past[offset], color_ps, 1.0, args.size_x)
 
         return im
 
+
     def draw_prediction(img_dir, b, offset_g, offset_p, predictions, img_offset, no_pred=False, no_gt=False):
         past, ground_truth, pose, vid, frame, pid, flipped = b[:7]
-        vid, frame, pid, flipped, py, pe, pp, err, traj_type = predictions[vid][str(frame)][str(pid)]
-        predicted = np.array(py)[...,:2]
+        pid_tensor = to_tensor_string(args.pid)
+        frame_tensor = to_tensor_string(args.frame)
+        vid, frame, pid, flipped, py, pe, pp, err, traj_type = predictions[vid][frame_tensor][pid_tensor]
+        frame, pid = extract_number(frame), extract_number(pid)
+        predicted = np.array(py)[..., :2]
         im = cv2.imread(os.path.join(img_dir, "rgb_{:05d}.jpg".format(int(frame) + img_offset)))
         im = cv2.addWeighted(im, args.ratio, im, 0.0, 0)
         cv2.circle(im, (int(past[0][0]), int(past[0][1])), args.size_circle, color_ps, -1)
@@ -165,22 +195,24 @@ if __name__ == "__main__":
 
         if not args.no_gt:
             if offset_g > 0:
-                im = draw_dotted_line(im, ground_truth[:offset_g+1], color_gt, 1.0, args.thick)
+                im = draw_dotted_line(im, ground_truth[:offset_g + 1], color_gt, 1.0, args.thick)
             if offset_g > -1:
                 cv2.circle(im, (int(ground_truth[0][0]), int(ground_truth[0][1])), args.size_circle, color_gt, -1)
                 im = draw_x(im, ground_truth[offset_g], color_gt, 1.0, args.size_x)
 
         if not no_pred:
             if offset_p > 0:
-                im = draw_dotted_line(im, predicted[:offset_p+1], color_pr, 1.0, args.thick, 0.7)
+                im = draw_dotted_line(im, predicted[:offset_p + 1], color_pr, 1.0, args.thick, 0.7)
             if offset_p > -1:
                 im = draw_x(im, predicted[offset_p], color_pr, 1.0, args.size_x)
         return im
 
+
     def write_img(oframe, out_img):
         cv2.imwrite("{}/{}_{}_{:02d}.jpg".format(save_dir, args.vid, args.pid, oframe), out_img)
 
-    start_b = valid_dataset.get_example(selected_idx)
+
+    start_b = valid_dataset[selected_idx]
     input_len = sargs["input_len"]
     pred_len = sargs["pred_len"]
 
@@ -195,7 +227,7 @@ if __name__ == "__main__":
         if not args.no_past:
             # Pause
             for x in range(nb_pause):
-                out = draw_past(img_dir, start_b, input_len-1)
+                out = draw_past(img_dir, start_b, input_len - 1)
                 output_image_list.append(out)
 
         # Extend prediction
@@ -214,31 +246,32 @@ if __name__ == "__main__":
         if args.simultaneous:
             out = draw_prediction(img_dir, start_b, x, x, predictions, input_len + x, args.no_pred, args.no_gt)
         else:
-            out = draw_prediction(img_dir, start_b, x, pred_len - 1, predictions, input_len + x, args.no_pred, args.no_gt)
+            out = draw_prediction(img_dir, start_b, x, pred_len - 1, predictions, input_len + x, args.no_pred,
+                                  args.no_gt)
         write_img(input_len + pred_len + x, out)
         output_image_list.append(out)
 
     # Pause
     for x in range(nb_pause):
         out = draw_prediction(img_dir, start_b, pred_len - 1, pred_len - 1,
-                                      predictions, input_len + pred_len - 1, args.no_pred)
+                              predictions, input_len + pred_len - 1, args.no_pred)
         output_image_list.append(out)
 
     if not args.no_video:
         if args.no_pred:
             video_name = os.path.join(save_dir, "{}_{}_{}_np.avi".format(args.vid, args.frame, args.pid))
-            #video_name = os.path.join(save_dir, "{}_{}_{}_np.mp4".format(args.vid, args.frame, args.pid))
+            # video_name = os.path.join(save_dir, "{}_{}_{}_np.mp4".format(args.vid, args.frame, args.pid))
         else:
             video_name = os.path.join(save_dir, "{}_{}_{}.avi".format(args.vid, args.frame, args.pid))
-            #video_name = os.path.join(save_dir, "{}_{}_{}.mp4".format(args.vid, args.frame, args.pid))
+            # video_name = os.path.join(save_dir, "{}_{}_{}.mp4".format(args.vid, args.frame, args.pid))
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         width, height = int(sargs.width * args.img_ratio), int(sargs.height * args.img_ratio)
         writer = cv2.VideoWriter(video_name, fourcc, args.fps, (width, height))
-        #writer = cv2.VideoWriter(video_name, 0x21, args.fps, (width, height))
+        # writer = cv2.VideoWriter(video_name, 0x21, args.fps, (width, height))
         for img in output_image_list:
             img = cv2.resize(img, (width, height))
             writer.write(img)
         writer.release()
         logger.info("Wrote video into {}".format(video_name))
 
-    logger.info("Elapsed time: {} (s), Saved at {}".format(time.time()-start, save_dir))
+    logger.info("Elapsed time: {} (s), Saved at {}".format(time.time() - start, save_dir))

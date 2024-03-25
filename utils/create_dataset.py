@@ -96,6 +96,7 @@ if __name__ == "__main__":
         args.traj_skip, args.traj_skip_test)
     h, w = args.height, args.width
 
+    # video的list，每个video中的image的数量的list
     vid_list, nb_image_list, blacklist = read_vid_list(args.indir_list)
     print("Number of videos: {}".format(len(vid_list)))
 
