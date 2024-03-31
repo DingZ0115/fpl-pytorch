@@ -11,7 +11,7 @@ def video_to_frames(video_path, output_folder, fps=10):
         return
 
     # 获取视频帧率
-    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    video_fps = 30
 
     # 计算每隔多少帧取一帧
     frame_interval = int(video_fps / fps)
@@ -43,8 +43,8 @@ def video_to_frames(video_path, output_folder, fps=10):
 
 
 # 定义输入视频文件路径和输出文件夹路径
-video_path = r"C:\Users\dy\Desktop\数据例子\video_0002.mp4"
-output_folder = r"\video_0002_image"
+video_path = r"C:\Users\dy\Desktop\数据例子\video_0017.mp4"
+output_folder = r"\11_image"
 
 # 将视频分割为每秒 10 帧的 RGB 图像
-video_to_frames(video_path, output_folder, fps=10)
+video_to_frames(video_path, output_folder, fps=30)

@@ -31,6 +31,25 @@ def parse_data_CV(data, split_list, input_len, offset_len, pred_len, nb_train):
         np.array(data["trans_mags"][idxs_split]),
         np.array(data["masks"][idxs_split][:, idxs_pred], dtype=np.float32) if "masks" in data else None
     ]))
+    # total_size = len(data["video_ids"])  # 假设所有数组长度相同，使用video_ids长度作为总大小
+    #
+    # if nb_train != -1:
+    #     idxs = np.random.choice(np.arange(total_size), nb_train, replace=False)  # 选择数据
+    # else:
+    #     idxs = np.arange(total_size)  # 使用全部数据
+    #
+    # data = list(map(lambda x: None if x is None else x[idxs], [
+    #     trajectories[:, idxs_past, :],  # 使用全部数据，但对时间维度应用idxs_past索引
+    #     trajectories[:, idxs_pred, :],  # 使用全部数据，但对时间维度应用idxs_pred索引
+    #     np.array(data["video_ids"])[idxs],
+    #     np.array(data["frames"])[idxs],
+    #     np.array(data["person_ids"])[idxs],
+    #     np.array(data["poses"])[:, idxs_both][idxs],  # 使用全部数据，但先对特征维度应用idxs_both索引，再应用主idxs
+    #     np.array(data["turn_mags"])[idxs],
+    #     np.array(data["trans_mags"])[idxs],
+    #     np.array(data["masks"][:, idxs_pred], dtype=np.float32)[idxs] if "masks" in data else None
+    #     # 使用全部数据，但先对时间维度应用idxs_pred索引，再应用主idxs
+    # ]))
     return data + [offset_len - input_len]
 
 
@@ -113,8 +132,6 @@ class SceneDatasetCV(Dataset):
         Y = self.Y[i].copy()
         poses = self.poses[i].copy()
         egomotions = self.egomotions[i].copy()
-        # horizontal_flip = True if self.flip else False
-
         horizontal_flip = np.random.random() < 0.5 if self.flip else False
         if horizontal_flip:
             X[:, 0] = self.width - X[:, 0]

@@ -1,4 +1,4 @@
-# pytorch版本训练代码，训练结束后会做evalutaion，所以没有再单独做evaluation了
+# pytorch版本训练代码
 
 # The main training file, afer calling run.py to generate commands.
 # This file will be called to start the main training parts.
@@ -23,7 +23,7 @@ import numpy as np
 from utils.dataset import SceneDatasetCV
 from utils.evaluation import Evaluator
 from utils.summary_logger import SummaryLogger
-from utils.generic import get_args, get_model, write_prediction
+from utils.generic import get_args_JAAD, get_model, write_prediction
 from mllogger import MLLogger
 
 logger = MLLogger(init=False)
@@ -73,7 +73,7 @@ def validate_and_report(model, valid_loader, args):
 
 
 if __name__ == "__main__":
-    args = get_args()
+    args = get_args_JAAD()
 
     torch.manual_seed(args.seed)
     start = time.time()
@@ -82,17 +82,16 @@ if __name__ == "__main__":
     logger.info(vars(args))
     save_dir = logger.get_savedir()
     logger.info("Written to {}".format(save_dir))
-    summary = SummaryLogger(args, logger, os.path.join(args.root_dir, "summary.csv"))
+    summary = SummaryLogger(args, logger, os.path.join(args.root_dir, "summary_JAAD.csv"))
     summary.update("finished", 0)
 
     data_dir = "data"
     data = joblib.load(args.in_data)
-    traj_len = data["trajectories"].shape[1]
+    # traj_len = 93
 
     # Load training data
     train_splits = list(filter(lambda x: x != args.eval_split, range(args.nb_splits)))
     valid_split = args.eval_split + args.nb_splits
-
     train_dataset = SceneDatasetCV(data, args.input_len, args.offset_len, args.pred_len,
                                    args.width, args.height, data_dir, train_splits, args.nb_train,
                                    True, "scale" in args.model, args.ego_type)
@@ -124,14 +123,20 @@ if __name__ == "__main__":
     train_eval.reset()
     st = time.time()
 
-    epochs = 28
+    his1 = 80
+    his2 = -70
+    his3 = 230
+    his4 = -10
+
+    epochs = 50
     for epoch in range(epochs):
         model.train()
+        cnt = 0
         for batch in train_loader:
             optimizer.zero_grad()  # 清除旧的梯度
             # 将数据和标签移动到相应设备
             inputs = concat_examples_pytorch(batch, args.device, data_idxs)
-            # 前向传播
+            # 前向传播，loss为批次的平均损失
             loss, pred_y = model(inputs)
             # 反向传播和优化
             loss.backward()  # 计算梯度

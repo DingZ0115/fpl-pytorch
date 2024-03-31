@@ -1,0 +1,21 @@
+{
+    "script_name": "train_py_JAAD.py",
+    "fixed_args": {
+        "in_data": "dataset/vit_JAAD_train.joblib",
+        "nb_iters": 17000,
+        "iter_snapshot": 1000,
+        "optimizer": "adam",
+        "batch_size": 64,
+        "save_model": "",
+        "nb_train": -1,
+        "channel_list": [32, 64, 128, 128],
+        "deconv_list": [256, 128, 64, 32],
+        "ksize_list": [3, 3, 3, 3],
+        "inter_list": [256],
+        "lr_step_list": [8,16,24,32]
+    },
+    "dynamic_args": {
+        "model": ["cnn_pose_scale"]
+    },
+    "cv": 5
+}

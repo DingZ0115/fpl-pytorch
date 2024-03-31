@@ -37,7 +37,8 @@ def to_tensor_string(n):
     """
     将整数转换为字符串，格式为"tensor(n)"。
     """
-    return f"tensor({n})"
+    # return f"tensor({n})"
+    return f"tensor({n}, dtype=torch.int32)"
 
 
 if __name__ == "__main__":

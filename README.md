@@ -1,6 +1,9 @@
 # fpl-pytorch
+
 ## 注意点及解释
-Q. DataSet返回的horizontal_flip，在dataloader产生batch以后，从布尔型变成了tensor
+
+### Q. DataSet返回的horizontal_flip，在dataloader产生batch以后，从布尔型变成了tensor
+
 在PyTorch中，`DataLoader`的`collate_fn`参数控制如何将多个数据样本（来自`Dataset`的`__getitem__`
 方法的返回值）批处理（或“collate”）成一个批次。默认情况下，`DataLoader`使用一个默认的`collate_fn`
 ，这个函数会尝试将列表中的数据合并成批次。对于张量数据，它会将它们堆叠起来；对于序列数据（如列表），它会将它们合并；对于数值和布尔值，它会尝试将它们转换为张量。
@@ -8,7 +11,8 @@ Q. DataSet返回的horizontal_flip，在dataloader产生batch以后，从布尔�
 因此，当你的`Dataset`的`__getitem__`方法返回包含布尔值的数据时，`DataLoader`通过其默认的`collate_fn`
 将这些布尔值转换为了PyTorch布尔张量，即使你在`__getitem__`方法中没有显式进行这种转换。这是为了保持数据类型的一致性，便于在PyTorch中进行批量处理和运算。
 
-Q. batch的形状
+### Q. batch的形状
+
 pytorch中
 batch - (11,batch_size)
 `batch`实际上是一个包含两个或多个元素的元组（或者是列表），而不是直接包含数据项的单一对象。这种情况通常发生在当你的`Dataset`
@@ -26,9 +30,31 @@ batch - (11,batch_size)
 Chainer 中
 batch - (batch_size, 11) 每个样本包括11个特征
 
+### Q. 最后预测的位置是什么
+
+人体举行框架的中心点（待定）
+
+### Q. fpl是根据多久预测多久
+
+根据1s，10帧，预测1s，10帧
+intput_len=10, offset_len=10, pred_len=10
+
+### Q. JAAD数据集为30fps的数据
+
+如果想与bibtrap相比，需预测45fps
+
+### Q. 为什么fpl是根据中心点推断，可视化出来点在脚下
+
+### Q. JAAD数据集处理时是按多少帧来处理的
+
+通过video_0014，video_0017 暂时感觉是30帧
+
 ## 待办
-1. 待测试eval_cv.py
+
+1. 待测试eval_cv.py（不想测试了，用不到）
 
 ## 代码注意事项
-dataset_1，train_py_epoch为正确代码
+
+train_py_epoch为正确代码
+fpl总共有72800个轨迹
 

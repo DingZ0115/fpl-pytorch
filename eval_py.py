@@ -13,6 +13,15 @@ from mllogger import MLLogger
 
 logger = MLLogger(init=False)
 
+
+def concat_examples_pytorch(batch, device, data_idxs):
+    batch_array = []
+    # batch 11*batch_size
+    for idx in data_idxs:
+        batch_array.append(batch[idx].to(device))
+    return batch_array
+
+
 if __name__ == "__main__":
     """
     Evaluation with Cross-Validation

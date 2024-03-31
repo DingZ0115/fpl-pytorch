@@ -1,9 +1,57 @@
 import argparse
 import torch
-from models.cnn import CNN, CNN_Pose, CNN_Ego, CNN_Ego_Pose
+from models.cnn import CNN, CNN_Pose, CNN_Ego_Pose
 from logging import getLogger
 
 logger = getLogger('main')
+
+
+def get_args_JAAD():
+    parser = argparse.ArgumentParser()
+    # Data
+    parser.add_argument('--in_data', type=str)
+    parser.add_argument('--nb_train', type=int, default=-1)
+    parser.add_argument('--nb_jobs', type=int, default=2)
+    parser.add_argument('--nb_splits', type=int, default=5)
+    parser.add_argument('--eval_split', type=int, default=0)
+    # Model
+    parser.add_argument('--model', type=str, default="cnn_pose_scale")
+    parser.add_argument('--input_len', type=int, default=45)
+    parser.add_argument('--offset_len', type=int, default=45)
+    parser.add_argument('--pred_len', type=int, default=45)
+    parser.add_argument('--inter_list', type=int, nargs="*", default=[])
+    parser.add_argument('--last_list', type=int, nargs="*", default=[])
+    parser.add_argument('--channel_list', type=int, nargs="*", default=[])
+    parser.add_argument('--deconv_list', type=int, nargs="*", default=[])
+    parser.add_argument('--ksize_list', type=int, nargs="*", default=[])
+    parser.add_argument('--dc_ksize_list', type=int, nargs="*", default=[])
+    parser.add_argument('--pad_list', type=int, nargs="*", default=[])
+
+    # Training
+    # 下面三个参数其实没用
+    parser.add_argument('--nb_iters', type=int, default=1000000)
+    parser.add_argument('--iter_snapshot', type=int, default=100000)
+    parser.add_argument('--iter_display', type=int, default=100000)
+
+    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--optimizer', type=str, default="adam")
+    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--lr_step_list', type=float, nargs="*", default=[])
+    parser.add_argument('--momentum', type=float, default=0.99)
+    parser.add_argument('--resume', type=str, default="")
+    # parser.add_argument('--resume', type=str, default='experiments/JAAD_train/230627_200900_AF/model_10000.npz')
+
+    # Others
+    parser.add_argument('--device', type=int, default=0)
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--save_model', action='store_true')
+    parser.add_argument('--root_dir', type=str, default='experiments/JAAD_train')
+    parser.add_argument('--width', type=int, default=1920)
+    parser.add_argument('--height', type=int, default=1080)
+    parser.add_argument('--nb_grids', type=int, default=6)
+    parser.add_argument('--seed', type=int, default=1701)
+    parser.add_argument('--ego_type', type=str, default="sfm")
+    return parser.parse_args()
 
 
 def get_args():
@@ -55,8 +103,11 @@ def get_args():
 
 
 def get_model(args):
-    mean = torch.tensor([640., 476.23620605, 88.2875590389])
-    std = torch.tensor([227.59802246, 65.00177002, 52.7303319245])
+    # 我计算出来是
+    mean = torch.tensor([640.7654, 494.7704, 88.4549])
+    std = torch.tensor([204.2717, 61.9290, 47.9989])
+    # mean = torch.tensor([640., 476.23620605, 88.2875590389])
+    # std = torch.tensor([227.59802246, 65.00177002, 52.7303319245])
     if "scale" not in args.model:
         mean, std = mean[:2], std[:2]
 
@@ -69,9 +120,6 @@ def get_model(args):
     elif args.model == "cnn_pose" or args.model == "cnn_pose_scale":
         model = CNN_Pose(mean, std, device, args.channel_list, args.deconv_list, args.ksize_list,
                          args.dc_ksize_list, args.inter_list, args.last_list, args.pad_list)
-    elif args.model == "cnn_ego" or args.model == "cnn_ego_scale":
-        model = CNN_Ego(mean, std, device, args.channel_list, args.deconv_list, args.ksize_list,
-                        args.dc_ksize_list, args.inter_list, args.last_list, args.pad_list, args.ego_type)
     elif args.model == "cnn_ego_pose" or args.model == "cnn_ego_pose_scale":
         model = CNN_Ego_Pose(mean, std, device, args.channel_list, args.deconv_list, args.ksize_list,
                              args.dc_ksize_list, args.inter_list, args.last_list, args.pad_list, args.ego_type)

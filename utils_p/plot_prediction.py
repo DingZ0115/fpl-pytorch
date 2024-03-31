@@ -11,7 +11,6 @@ import re
 from dataset import SceneDatasetForAnalysis
 from plot import draw_line, draw_dotted_line, draw_x
 from mllogger import MLLogger
-import torch
 
 logger = MLLogger(init=False)
 
@@ -31,11 +30,14 @@ def extract_number(text):
         return int(matches[0])
     else:
         return None
+
+
 def to_tensor_string(n):
     """
     将整数转换为字符串，格式为"tensor(n)"。
     """
-    return f"tensor({n})"
+    # return f"tensor({n})"
+    return f"tensor({n}, dtype=torch.int32)"
 
 
 def get_traj_type(hip_dist):
@@ -175,7 +177,9 @@ if __name__ == "__main__":
             if not args.debug:
                 if args.img_ratio < 1.0:
                     im = cv2.resize(im, None, fx=args.img_ratio, fy=args.img_ratio)
-                cv2.imwrite(os.path.join(save_dir, "pred_{}_{}_{}_{}.jpg".format(vid, extract_number(frame), extract_number(pid), idx + 1)), im)
+                cv2.imwrite(os.path.join(save_dir,
+                                         "pred_{}_{}_{}_{}.jpg".format(vid, extract_number(frame), extract_number(pid),
+                                                                       idx + 1)), im)
 
         cnt += 1
 
